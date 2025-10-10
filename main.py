@@ -66,8 +66,11 @@ async def handle_calc_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     if state == "enter_register_midterm":
         value = parse_double(text)
-        if value is None or value < 25:
-            await update.message.reply_text("Ошибка: введи число от 25 до 100.")
+        if value is None:
+            await update.message.reply_text("Ошибка: введи число от 0 до 100.")
+            return
+        if value < 25:
+            await update.message.reply_text("У вас летник (╯︵╰,).")
             return
         context.user_data["register_midterm"] = value
         context.user_data["calc_state"] = "enter_register_endterm"
@@ -75,8 +78,11 @@ async def handle_calc_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     
     elif state == "enter_register_endterm":
         value = parse_double(text)
-        if value is None or value < 25:
-            await update.message.reply_text("Ошибка: введи число от 25 до 100.")
+        if value is None:
+            await update.message.reply_text("Ошибка: введи число от 0 до 100.")
+            return
+        if value < 25:
+            await update.message.reply_text("У вас летник (╯︵╰,).")
             return
         context.user_data["register_endterm"] = value
         avg = (context.user_data["register_midterm"] + context.user_data["register_endterm"]) / 2
@@ -91,6 +97,12 @@ async def handle_calc_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         value = parse_double(text)
         if value is None:
             await update.message.reply_text("Ошибка: введи число от 0 до 100.")
+            return
+        if value < 25:
+            await update.message.reply_text("У вас летник (╯︵╰,).")
+            return
+        if value > 25 and value < 50:
+            await update.message.reply_text("У вас пересдача (╯︵╰,).")
             return
         context.user_data["final"] = value
 
@@ -116,7 +128,7 @@ async def handle_calc_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             elif score >= 50:
                 result_message += "Ты не пересдаешь экзамен (^-^*)"
             else:
-                result_message += "К сожалению, тебе придется пересдать экзамен (╯︵╰,)"
+                result_message += "К сожалению, у тебя летник (╯︵╰,)"
             await update.message.reply_text(result_message)
         context.user_data.clear()
 
