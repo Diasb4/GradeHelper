@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Калькулятор итоговой оценки — Grade Helper</title>
+    <style>
+        :root {
+            --bg: #0f1724;
+            --card: #111827;
+            --muted: #9ca3af;
+            --accent: #60a5fa;
+            --success: #10b981;
+            --danger: #ef4444;
+            --glass: rgba(255, 255, 255, 0.03);
+            --glass-2: rgba(255, 255, 255, 0.02);
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+        }
+
+        body {
+            background: linear-gradient(180deg, #071024 0%, #0f1724 60%);
+            color: #e6eef8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 32px;
+        }
+
+        .wrap {
+            width: 100%;
+            max-width: 960px;
+            display: grid;
+            grid-template-columns: 1fr 420px;
+            gap: 24px;
+        }
+
+        /* left: form */
+        .card {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+            border-radius: 14px;
+            padding: 20px;
+            box-shadow: 0 8px 30px rgba(2, 6, 23, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        h1 {
+            margin: 0 0 6px;
+            font-size: 20px;
+            color: var(--accent)
+        }
+
+        p.lead {
+            margin: 0 0 18px;
+            color: var(--muted);
+            font-size: 14px
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            color: #cfe7ff;
+            margin-top: 10px;
+            margin-bottom: 6px
+        }
+
+        input[type=number],
+        select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            background: var(--glass);
+            color: inherit;
+            font-size: 15px;
+            outline: 2px solid transparent;
+            transition: outline .12s;
+        }
+
+        input[type=number]:focus,
+        select:focus {
+            outline: 2px solid rgba(96, 165, 250, 0.12)
+        }
+
+        .row {
+            display: flex;
+            gap: 12px
+        }
+
+        .col {
+            flex: 1
+        }
+
+        .buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 14px
+        }
+
+        button {
+            cursor: pointer;
+            border: 0;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-weight: 600;
+            background: linear-gradient(180deg, var(--accent), #3b82f6);
+            color: white;
+            box-shadow: 0 6px 18px rgba(59, 130, 246, 0.16);
+        }
+
+        button.secondary {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            color: var(--muted);
+            box-shadow: none
+        }
+
+        button.danger {
+            background: linear-gradient(180deg, var(--danger), #dc2626);
+        }
+
+        /* right: result panel */
+        .panel {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .result {
+            padding: 16px;
+            border-radius: 12px;
+            background: linear-gradient(180deg, var(--glass), var(--glass-2));
+            min-height: 140px;
+            font-size: 15px;
+            color: #e8f7ff;
+            white-space: pre-wrap;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 8px;
+            border-radius: 999px;
+            font-size: 13px;
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--muted);
+            margin-right: 8px
+        }
+
+        .progress-wrap {
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 999px;
+            padding: 6px
+        }
+
+        .progress {
+            height: 18px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #06202e, #06202e);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress>div {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #06b6d4, #60a5fa);
+            transition: width .45s ease, background .25s linear;
+        }
+
+        .meta {
+            font-size: 13px;
+            color: var(--muted)
+        }
+
+        footer {
+            margin-top: 14px;
+            font-size: 13px;
+            color: var(--muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center
+        }
+
+        .sig {
+            font-size: 13px;
+            color: #cbd5e1
+        }
+
+        .hint {
+            font-size: 13px;
+            color: var(--muted)
+        }
+
+        /* small screens */
+        @media (max-width:920px) {
+            .wrap {
+                grid-template-columns: 1fr;
+                max-width: 720px
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <!-- FORM -->
+        <div class="card">
+            <h1>Grade Helper — калькулятор итоговой оценки</h1>
+            <p class="lead">Вводи оценки регистрационного мидтерма и эндтерма, затем файнал (или оставь пустым —
+                получите подсказки). Минимальный допуск на финал — <strong>50</strong>.</p>
+
+            <form id="gradeForm" onsubmit="return false;">
+                <label>РегМид (RegMid)</label>
+                <input id="regmid" type="number" min="0" max="100" step="0.01" placeholder="Например 78.5" required />
+
+                <label>РегЭнд (RegEnd)</label>
+                <input id="regend" type="number" min="0" max="100" step="0.01" placeholder="Например 82" required />
+
+                <div class="row">
+                    <div class="col">
+                        <label>Файнал (Final) — если известен</label>
+                        <input id="final" type="number" min="0" max="100" step="0.01"
+                            placeholder="Оставь пустым, если неизвестен" />
+                    </div>
+                </div>
+
+                <div class="buttons">
+                    <button id="calcBtn" onclick="onCalculate()">Рассчитать</button>
+                    <button id="resetBtn" class="secondary" onclick="onReset()">Сбросить</button>
+                    <button id="copyBtn" class="secondary" onclick="onCopy()">Скопировать результат</button>
+                </div>
+
+                <footer>
+                    <div class="meta">Правила: total = regmid*0.3 + regend*0.3 + final*0.4</div>
+                    <div class="sig">Подпись: <strong id="signature">Not_404(Code:403)</strong></div>
+                </footer>
+            </form>
+        </div>
+
+        <!-- RESULT PANEL -->
+        <div class="panel">
+            <div class="card">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                    <div>
+                        <span class="badge">Результат</span>
+                        <span class="meta" id="smallNote">Ожидается ввод...</span>
+                    </div>
+                    <div style="text-align:right">
+                        <div class="meta">Прогресс тотала</div>
+                        <div class="progress-wrap" style="width:240px">
+                            <div class="progress" aria-hidden="true">
+                                <div id="progressBarInner" style="width:0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="result" id="resultBox">Нажми «Рассчитать», чтобы получить результат.</div>
+            </div>
+
+            <div class="card" style="padding:12px">
+                <div class="meta">Подсказки:</div>
+                <ul style="margin:8px 0 0 18px;color:var(--muted)">
+                    <li>Если финал не введён — подсчитаем минимально допустимый файнал (не менее 50) для разных целей.
+                    </li>
+                    <li>Финал ниже 50 = пересдача.</li>
+                    <li>Регтерм < 50 → летник.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Helper numeric parsing that emulates careful arithmetic ---
+        function toNum(v) {
+            if (v === null || v === undefined || v === '') return null;
+            const n = Number(v);
+            return Number.isFinite(n) ? n : null;
+        }
+
+        function clamp01(v) { return Math.max(0, Math.min(100, v)); }
+
+        // Compute required final solving linear equation:
+        // target = regmid*0.3 + regend*0.3 + final*0.4  => final = (target - current)/0.4
+        function requiredFinal(mid, end, target) {
+            const current = (mid * 0.3) + (end * 0.3);
+            return (target - current) / 0.4;
+        }
+
+        function formatNum(n) { return (Math.round(n * 100) / 100).toFixed(2); }
+
+        function setProgress(p) {
+            // p expected 0..100
+            p = Math.max(0, Math.min(100, p));
+            const bar = document.getElementById('progressBarInner');
+            bar.style.width = p + '%';
+            // color based on value
+            if (p >= 90) bar.style.background = 'linear-gradient(90deg,#06b6d4,#60a5fa)';
+            else if (p >= 70) bar.style.background = 'linear-gradient(90deg,#16a34a,#60a5fa)';
+            else if (p >= 50) bar.style.background = 'linear-gradient(90deg,#f59e0b,#f97316)';
+            else bar.style.background = 'linear-gradient(90deg,#ef4444,#f43f5e)';
+        }
+
+        function showResult(text) {
+            const el = document.getElementById('resultBox');
+            el.textContent = text;
+        }
+
+        function onReset() {
+            document.getElementById('gradeForm').reset();
+            showResult('Форма сброшена. Введите новые значения и нажмите "Рассчитать".');
+            document.getElementById('smallNote').textContent = 'Ожидается ввод...';
+            setProgress(0);
+        }
+
+        function onCopy() {
+            const text = document.getElementById('resultBox').textContent;
+            navigator.clipboard?.writeText(text).then(() => {
+                alert('Результат скопирован в буфер обмена');
+            }, () => { alert('Не удалось скопировать'); });
+        }
+
+        function onCalculate() {
+            const regmid = toNum(document.getElementById('regmid').value);
+            const regend = toNum(document.getElementById('regend').value);
+            const final = toNum(document.getElementById('final').value);
+            const cheating = document.getElementById('cheating').value;
+
+            // Basic validation
+            if (regmid === null || regend === null) {
+                alert('Заполни поля RegMid и RegEnd (0..100).');
+                return;
+            }
+            if (regmid < 0 || regmid > 100 || regend < 0 || regend > 100) {
+                alert('Оценки должны быть в диапазоне 0..100.');
+                return;
+            }
+            // по заявке: минимальные проверки на регмид/регэнд
+            if (regmid < 25) {
+                showResult('РегМид меньше 25 — летник.');
+                setProgress(0);
+                return;
+            }
+            if (regend < 25) {
+                showResult('РегЭнд меньше 25 — летник.');
+                setProgress(0);
+                return;
+            }
+
+            const regterm = (regmid + regend) / 2;
+
+            if (regterm < 50) {
+                showResult(`РегТерм = ${formatNum(regterm)} — меньше 50 → летник.`);
+                setProgress(0);
+                return;
+            }
+
+            // Если файнал не введён — выдаём регтерм и нужные минимум файнала (но не ниже 50)
+            if (final === null) {
+                // минимальные требуемые значения
+                const need50 = 50.0; // по твоему условию финал не может быть ниже 50
+                const reqForPass = Math.max(50, requiredFinal(regmid, regend, 50)); // for >50 pass
+                const reqForScholar = Math.max(50, requiredFinal(regmid, regend, 70));
+                const reqForHigh = Math.max(50, requiredFinal(regmid, regend, 90));
+
+                // If required is >100 — show as "больше 100" (невыполнимо)
+                const nice = (v) => {
+                    if (v === Infinity || isNaN(v)) return '—';
+                    if (v > 100) return '>100';
+                    if (v < 0) return '0';
+                    return formatNum(v);
+                };
+
+                const text =
+                    `РегТерм = ${formatNum(regterm)}.
+
+Если финал не известен — минимально допустимый файнал = 50.
+
+Нужный финал (не менее 50):
+• Для прохождения курса (итог ≥ 50): ${nice(reqForPass)}.
+• Для обычной стипендии (итог ≥ 70): ${nice(reqForScholar)}.
+• Для повышенной стипендии (итог ≥ 90): ${nice(reqForHigh)}.
+
+Примечание: итог считается как total = regmid*0.3 + regend*0.3 + final*0.4.`;
+
+                showResult(text);
+                document.getElementById('smallNote').textContent = 'Финал не введён — показаны необходимые значения';
+                // progress = reg contribution only (normalized to 100)
+                // compute current partial total (without final) and map to 0..100 by assuming final=50 minimal
+                const partial = (regmid * 0.3 + regend * 0.3); // out of max 60 (if both 100)
+                // rough estimate: show partial * (100/ (partial + 50*0.4))
+                const estTotalIf50 = partial + 50 * 0.4;
+                setProgress(estTotalIf50); // estTotalIf50 is 0..100
+                return;
+            }
+
+            // Если финал введён — проверяем минимальное требование: финал не может быть ниже 50
+            if (final < 50) {
+                showResult(`Файнал = ${formatNum(final)} — пересдача (минимум 50 для допуска).`);
+                setProgress(0);
+                return;
+            }
+            if (final > 100 || final < 0) {
+                alert('Финал должен быть в диапазоне 0..100.');
+                return;
+            }
+
+            // Финальный расчёт
+            const total = (regmid * 0.3) + (regend * 0.3) + (final * 0.4);
+            let verdict = '';
+            if (total < 50) verdict = '🟥 Тотал < 50 — летник.';
+            else if (total < 70) verdict = '🟧 Тотал < 70 — минус стипендия.';
+            else if (total < 90) verdict = '🟩 Тотал ≥ 70 — стипендия сохраняется.';
+            else verdict = '🌟 Тотал ≥ 90 — повышенная стипендия!';
+
+            const text =
+                `РегМид = ${formatNum(regmid)}
+РегЭнд = ${formatNum(regend)}
+РегТерм = ${formatNum(regterm)}
+Финал = ${formatNum(final)}
+
+Итоговый тотал = ${formatNum(total)}.
+
+${verdict}`;
+
+            showResult(text);
+            document.getElementById('smallNote').textContent = 'Расчёт завершён';
+            setProgress(total);
+        }
+    </script>
+</body>
+
+</html>
