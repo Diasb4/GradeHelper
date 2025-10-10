@@ -1,6 +1,8 @@
 import asyncio
 import nest_asyncio
 import logging
+import os
+from dotenv import load_dotenv  
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 
@@ -12,8 +14,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-TELEGRAM_BOT_TOKEN = "YOUR_BOT_TOKEN"
-BUG_REPORT_GROUP_ID = "-1001234567890"
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+BUG_REPORT_GROUP_ID = os.getenv("BUG_REPORT_GROUP_ID")
 bug_reports = {}
 
 bot_id = None  # Переменная для хранения ID бота
