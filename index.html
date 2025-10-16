@@ -277,108 +277,113 @@
     </div>
 
     <script>
-        // --- Helper numeric parsing that emulates careful arithmetic ---
-        function toNum(v) {
-            if (v === null || v === undefined || v === '') return null;
-            const n = Number(v);
-            return Number.isFinite(n) ? n : null;
+    // --- Helper numeric parsing that emulates careful arithmetic ---
+    function toNum(v) {
+        if (v === null || v === undefined || v === '') return null;
+        const n = Number(v);
+        return Number.isFinite(n) ? n : null;
+    }
+
+    function clamp01(v) { return Math.max(0, Math.min(100, v)); }
+
+    // Compute required final solving linear equation:
+    // target = regmid*0.3 + regend*0.3 + final*0.4  => final = (target - current)/0.4
+    function requiredFinal(mid, end, target) {
+        const current = (mid * 0.3) + (end * 0.3);
+        return (target - current) / 0.4;
+    }
+
+    function formatNum(n) {
+        if (n === null || n === undefined || isNaN(n)) return '—';
+        return (Math.round(n * 100) / 100).toFixed(2);
+    }
+
+    function setProgress(p) {
+        // p expected 0..100
+        p = Number(p);
+        if (!Number.isFinite(p)) p = 0;
+        p = Math.max(0, Math.min(100, p));
+        const bar = document.getElementById('progressBarInner');
+        bar.style.width = p + '%';
+        // color based on value
+        if (p >= 90) bar.style.background = 'linear-gradient(90deg,#06b6d4,#60a5fa)';
+        else if (p >= 70) bar.style.background = 'linear-gradient(90deg,#16a34a,#60a5fa)';
+        else if (p >= 50) bar.style.background = 'linear-gradient(90deg,#f59e0b,#f97316)';
+        else bar.style.background = 'linear-gradient(90deg,#ef4444,#f43f5e)';
+    }
+
+    function showResult(text) {
+        const el = document.getElementById('resultBox');
+        el.textContent = text;
+    }
+
+    function onReset() {
+        document.getElementById('gradeForm').reset();
+        showResult('Форма сброшена. Введите новые значения и нажмите "Рассчитать".');
+        document.getElementById('smallNote').textContent = 'Ожидается ввод...';
+        setProgress(0);
+    }
+
+    function onCopy() {
+        const text = document.getElementById('resultBox').textContent;
+        navigator.clipboard?.writeText(text).then(() => {
+            alert('Результат скопирован в буфер обмена');
+        }, () => { alert('Не удалось скопировать'); });
+    }
+
+    function onCalculate() {
+        const regmid = toNum(document.getElementById('regmid').value);
+        const regend = toNum(document.getElementById('regend').value);
+        const final = toNum(document.getElementById('final').value);
+        // removed reference to non-existent element 'cheating'
+
+        // Basic validation
+        if (regmid === null || regend === null) {
+            alert('Заполни поля RegMid и RegEnd (0..100).');
+            return;
         }
-
-        function clamp01(v) { return Math.max(0, Math.min(100, v)); }
-
-        // Compute required final solving linear equation:
-        // target = regmid*0.3 + regend*0.3 + final*0.4  => final = (target - current)/0.4
-        function requiredFinal(mid, end, target) {
-            const current = (mid * 0.3) + (end * 0.3);
-            return (target - current) / 0.4;
+        if (regmid < 0 || regmid > 100 || regend < 0 || regend > 100) {
+            alert('Оценки должны быть в диапазоне 0..100.');
+            return;
         }
-
-        function formatNum(n) { return (Math.round(n * 100) / 100).toFixed(2); }
-
-        function setProgress(p) {
-            // p expected 0..100
-            p = Math.max(0, Math.min(100, p));
-            const bar = document.getElementById('progressBarInner');
-            bar.style.width = p + '%';
-            // color based on value
-            if (p >= 90) bar.style.background = 'linear-gradient(90deg,#06b6d4,#60a5fa)';
-            else if (p >= 70) bar.style.background = 'linear-gradient(90deg,#16a34a,#60a5fa)';
-            else if (p >= 50) bar.style.background = 'linear-gradient(90deg,#f59e0b,#f97316)';
-            else bar.style.background = 'linear-gradient(90deg,#ef4444,#f43f5e)';
-        }
-
-        function showResult(text) {
-            const el = document.getElementById('resultBox');
-            el.textContent = text;
-        }
-
-        function onReset() {
-            document.getElementById('gradeForm').reset();
-            showResult('Форма сброшена. Введите новые значения и нажмите "Рассчитать".');
-            document.getElementById('smallNote').textContent = 'Ожидается ввод...';
+        // по заявке: минимальные проверки на регмид/регэнд
+        if (regmid < 25) {
+            showResult('РегМид меньше 25 — летник.');
             setProgress(0);
+            return;
+        }
+        if (regend < 25) {
+            showResult('РегЭнд меньше 25 — летник.');
+            setProgress(0);
+            return;
         }
 
-        function onCopy() {
-            const text = document.getElementById('resultBox').textContent;
-            navigator.clipboard?.writeText(text).then(() => {
-                alert('Результат скопирован в буфер обмена');
-            }, () => { alert('Не удалось скопировать'); });
+        const regterm = (regmid + regend) / 2;
+
+        if (regterm < 50) {
+            showResult(`РегТерм = ${formatNum(regterm)} — меньше 50 → летник.`);
+            setProgress(0);
+            return;
         }
 
-        function onCalculate() {
-            const regmid = toNum(document.getElementById('regmid').value);
-            const regend = toNum(document.getElementById('regend').value);
-            const final = toNum(document.getElementById('final').value);
-            const cheating = document.getElementById('cheating').value;
+        // Если файнал не введён — выдаём регтерм и нужные минимум файнала (но не ниже 50)
+        if (final === null) {
+            // минимальные требуемые значения
+            const need50 = 50.0; // по твоему условию финал не может быть ниже 50
+            const reqForPass = Math.max(50, requiredFinal(regmid, regend, 50)); // for >=50 pass
+            const reqForScholar = Math.max(50, requiredFinal(regmid, regend, 70));
+            const reqForHigh = Math.max(50, requiredFinal(regmid, regend, 90));
 
-            // Basic validation
-            if (regmid === null || regend === null) {
-                alert('Заполни поля RegMid и RegEnd (0..100).');
-                return;
-            }
-            if (regmid < 0 || regmid > 100 || regend < 0 || regend > 100) {
-                alert('Оценки должны быть в диапазоне 0..100.');
-                return;
-            }
-            // по заявке: минимальные проверки на регмид/регэнд
-            if (regmid < 25) {
-                showResult('РегМид меньше 25 — летник.');
-                setProgress(0);
-                return;
-            }
-            if (regend < 25) {
-                showResult('РегЭнд меньше 25 — летник.');
-                setProgress(0);
-                return;
-            }
+            // If required is >100 — show as "больше 100" (невыполнимо)
+            const nice = (v) => {
+                if (v === Infinity || isNaN(v)) return '—';
+                if (v > 100) return '>100';
+                if (v < 0) return '0';
+                return formatNum(v);
+            };
 
-            const regterm = (regmid + regend) / 2;
-
-            if (regterm < 50) {
-                showResult(`РегТерм = ${formatNum(regterm)} — меньше 50 → летник.`);
-                setProgress(0);
-                return;
-            }
-
-            // Если файнал не введён — выдаём регтерм и нужные минимум файнала (но не ниже 50)
-            if (final === null) {
-                // минимальные требуемые значения
-                const need50 = 50.0; // по твоему условию финал не может быть ниже 50
-                const reqForPass = Math.max(50, requiredFinal(regmid, regend, 50)); // for >50 pass
-                const reqForScholar = Math.max(50, requiredFinal(regmid, regend, 70));
-                const reqForHigh = Math.max(50, requiredFinal(regmid, regend, 90));
-
-                // If required is >100 — show as "больше 100" (невыполнимо)
-                const nice = (v) => {
-                    if (v === Infinity || isNaN(v)) return '—';
-                    if (v > 100) return '>100';
-                    if (v < 0) return '0';
-                    return formatNum(v);
-                };
-
-                const text =
-                    `РегТерм = ${formatNum(regterm)}.
+            const text =
+                `РегТерм = ${formatNum(regterm)}.
 
 Если финал не известен — минимально допустимый файнал = 50.
 
@@ -389,38 +394,36 @@
 
 Примечание: итог считается как total = regmid*0.3 + regend*0.3 + final*0.4.`;
 
-                showResult(text);
-                document.getElementById('smallNote').textContent = 'Финал не введён — показаны необходимые значения';
-                // progress = reg contribution only (normalized to 100)
-                // compute current partial total (without final) and map to 0..100 by assuming final=50 minimal
-                const partial = (regmid * 0.3 + regend * 0.3); // out of max 60 (if both 100)
-                // rough estimate: show partial * (100/ (partial + 50*0.4))
-                const estTotalIf50 = partial + 50 * 0.4;
-                setProgress(estTotalIf50); // estTotalIf50 is 0..100
-                return;
-            }
+            showResult(text);
+            document.getElementById('smallNote').textContent = 'Финал не введён — показаны необходимые значения';
+            // progress = reg contribution only (normalized to 100)
+            const partial = (regmid * 0.3 + regend * 0.3); // out of max 60 (if both 100)
+            const estTotalIf50 = partial + 50 * 0.4; // already 0..100 scale
+            setProgress(estTotalIf50);
+            return;
+        }
 
-            // Если финал введён — проверяем минимальное требование: финал не может быть ниже 50
-            if (final < 50) {
-                showResult(`Файнал = ${formatNum(final)} — пересдача (минимум 50 для допуска).`);
-                setProgress(0);
-                return;
-            }
-            if (final > 100 || final < 0) {
-                alert('Финал должен быть в диапазоне 0..100.');
-                return;
-            }
+        // Если финал введён — проверяем минимальное требование: финал не может быть ниже 50
+        if (final < 50) {
+            showResult(`Файнал = ${formatNum(final)} — пересдача (минимум 50 для допуска).`);
+            setProgress(0);
+            return;
+        }
+        if (final > 100 || final < 0) {
+            alert('Финал должен быть в диапазоне 0..100.');
+            return;
+        }
 
-            // Финальный расчёт
-            const total = (regmid * 0.3) + (regend * 0.3) + (final * 0.4);
-            let verdict = '';
-            if (total < 50) verdict = '🟥 Тотал < 50 — летник.';
-            else if (total < 70) verdict = '🟧 Тотал < 70 — минус стипендия.';
-            else if (total < 90) verdict = '🟩 Тотал ≥ 70 — стипендия сохраняется.';
-            else verdict = '🌟 Тотал ≥ 90 — повышенная стипендия!';
+        // Финальный расчёт
+        const total = (regmid * 0.3) + (regend * 0.3) + (final * 0.4);
+        let verdict = '';
+        if (total < 50) verdict = '🟥 Тотал < 50 — летник.';
+        else if (total < 70) verdict = '🟧 Тотал < 70 — минус стипендия.';
+        else if (total < 90) verdict = '🟩 Тотал ≥ 70 — стипендия сохраняется.';
+        else verdict = '🌟 Тотал ≥ 90 — повышенная стипендия!';
 
-            const text =
-                `РегМид = ${formatNum(regmid)}
+        const text =
+            `РегМид = ${formatNum(regmid)}
 РегЭнд = ${formatNum(regend)}
 РегТерм = ${formatNum(regterm)}
 Финал = ${formatNum(final)}
@@ -429,11 +432,12 @@
 
 ${verdict}`;
 
-            showResult(text);
-            document.getElementById('smallNote').textContent = 'Расчёт завершён';
-            setProgress(total);
-        }
-    </script>
+        showResult(text);
+        document.getElementById('smallNote').textContent = 'Расчёт завершён';
+        setProgress(total);
+    }
+</script>
+
 </body>
 
 </html>
